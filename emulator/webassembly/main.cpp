@@ -4,6 +4,7 @@
 #include <inttypes.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <fstream>
 
 #if __EMSCRIPTEN__
 #include <emscripten/emscripten.h>
@@ -18,6 +19,11 @@
 #define DISPLAY_WIDTH 128
 #define DISPLAY_HEIGHT 64
 #define DISPLAY_SCALE 4
+
+const char* romFilename;
+
+const char* background = "background.png";
+const char* ttfFont = "Vera.ttf";
 
 SDL_Window *window = NULL;
 SDL_Renderer *renderer = NULL;
@@ -415,8 +421,10 @@ int main_tick() {
     }
 #endif
 
-    render();
-    SDL_UpdateWindowSurface(window);
+    if (window) {
+        render();
+        SDL_UpdateWindowSurface(window);
+    }
 
 #if !__EMSCRIPTEN__
     return 0;
@@ -449,32 +457,51 @@ Uint32 my_callbackfunc(Uint32 interval, void *param) {
     return (interval);
 }
 
-int main() {
+bool file_exists(const char* name) {
+    ifstream f(name);
+    return f.good();
+}
+
+int main(int argc, char** argv) {
+    // optionally specify program
+    if (argc == 2) {
+        romFilename = argv[1];
+    } else {
+        romFilename = "rom.bin";
+    }
+
+    // set stdout and stdin to unbuffered
+    setvbuf(stdin, NULL, _IONBF, 0);
+    setvbuf(stdout, NULL, _IONBF, 0);    
+
+    // init SDL
     SDL_Init(SDL_INIT_VIDEO);
 
-    window =
-        SDL_CreateWindow("Simple 6502 Emulator", SDL_WINDOWPOS_UNDEFINED,
-                         SDL_WINDOWPOS_UNDEFINED, SCREEN_WIDTH, SCREEN_HEIGHT,
-                         SDL_WINDOW_SHOWN | SDL_WINDOW_OPENGL);
+    // show window, if background image was found
+    if (file_exists(background)) {
+        window =
+            SDL_CreateWindow("Simple 6502 Emulator", SDL_WINDOWPOS_UNDEFINED,
+                            SDL_WINDOWPOS_UNDEFINED, SCREEN_WIDTH, SCREEN_HEIGHT,
+                            SDL_WINDOW_SHOWN | SDL_WINDOW_OPENGL);
+        renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED);
+        SDL_SetRenderDrawColor(renderer, 0xff, 0xff, 0xff, 0xff);
+        IMG_Init(IMG_INIT_PNG);
+        bitmapSurface = IMG_Load(background);
+        bitmapTex = SDL_CreateTextureFromSurface(renderer, bitmapSurface);
+        SDL_FreeSurface(bitmapSurface);
+        TTF_Init();
+        vera = TTF_OpenFont(ttfFont, 18);
+        audio_init();
+    }
 
-    renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED);
-    SDL_SetRenderDrawColor(renderer, 0xff, 0xff, 0xff, 0xff);
-
-    IMG_Init(IMG_INIT_PNG);
-    bitmapSurface = IMG_Load("background.png");
-    bitmapTex = SDL_CreateTextureFromSurface(renderer, bitmapSurface);
-    SDL_FreeSurface(bitmapSurface);
-
-    TTF_Init();
-    vera = TTF_OpenFont("Vera.ttf", 18);
-
-    audio_init();
-
+    // start application
     start();
 
+    // 20 Hz timer (called each 50 ms)
     Uint32 delay = 50;
     SDL_AddTimer(delay, my_callbackfunc, 0);
 
+    // SDL main loop
     main_loop();
 
     SDL_DestroyRenderer(renderer);

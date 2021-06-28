@@ -56,7 +56,7 @@
        10  10000 ????		00 10	    LCD_RS_PIN equ	16
        11  10000 ????		00 20	    LCD_E_PIN  equ	32
        12  10000 ????
-       13  10000 ????		de 00	    LCD_PORT   equ	$de00
+       13  10000 ????		e0 01	    LCD_PORT   equ	$e001
        14  10000 ????
        15  10000 ????		00 fb	    latch      EQU	$fb
        16  10000 ????		00 fc	    text       EQU	$fc
@@ -80,240 +80,236 @@
        34  8010		       8d 01 e0 	      sta	$e001
        35  8013
        36  8013							; init display
-       37  8013		       20 bd 80 	      jsr	lcdInit
+       37  8013		       20 b0 80 	      jsr	lcdInit
        38  8016
        39  8016							; scroll text
        40  8016		       a9 00	   start      lda	#0
        41  8018		       85 bf		      sta	textX
        42  801a				   start2		; draw first line
        43  801a		       18		      clc
-       44  801b		       a9 53		      lda	#<(scroll1)
+       44  801b		       a9 46		      lda	#<(scroll1)
        45  801d		       65 bf		      adc	textX
        46  801f		       85 fc		      sta	text
        47  8021		       a9 81		      lda	#>(scroll1)
        48  8023		       85 fd		      sta	text + 1
        49  8025		       a0 00		      ldy	#0
-       50  8027		       20 39 81 	      jsr	drawTextLine
+       50  8027		       20 2c 81 	      jsr	drawTextLine
        51  802a
        52  802a							; draw second line
        53  802a		       18		      clc
-       54  802b		       a9 9c		      lda	#<(scroll2)
+       54  802b		       a9 8f		      lda	#<(scroll2)
        55  802d		       65 bf		      adc	textX
        56  802f		       85 fc		      sta	text
        57  8031		       a9 81		      lda	#>(scroll2)
        58  8033		       85 fd		      sta	text + 1
        59  8035		       a0 01		      ldy	#1
-       60  8037		       20 39 81 	      jsr	drawTextLine
+       60  8037		       20 2c 81 	      jsr	drawTextLine
        61  803a
        62  803a							; wait a bit
        63  803a		       a9 64		      lda	#100
-       64  803c		       20 5d 80 	      jsr	delay
+       64  803c		       20 50 80 	      jsr	delay
        65  803f
-       66  803f							; scroll
-       67  803f		       e6 bf		      inc	textX
-       68  8041		       a5 bf		      lda	textX
-       69  8043		       c9 38		      cmp	#56
-       70  8045		       d0 d3		      bne	start2
-       71  8047
-       72  8047							; start from beginning
-       73  8047		       4c 16 80 	      jmp	start
-       74  804a
-       75  804a							; blink LED at PA0
-       76  804a		       a9 00	   blink      lda	#0
-       77  804c		       8d 01 e0 	      sta	$e001
-       78  804f		       20 5d 80 	      jsr	delay
-       79  8052		       a9 01		      lda	#1
-       80  8054		       8d 01 e0 	      sta	$e001
-       81  8057		       20 5d 80 	      jsr	delay
-       82  805a		       4c 4a 80 	      jmp	blink
-       83  805d
-       84  805d							; delay for the specified numbers of milliseconds in A
-       85  805d		       a2 02	   delay      ldx	#2
-       86  805f		       a0 00	   delay2     ldy	#0
-       87  8061		       88	   delay3     dey
-       88  8062		       d0 fd		      bne	delay3
-       89  8064		       ca		      dex
-       90  8065		       d0 f8		      bne	delay2
-       91  8067		       38		      sec
-       92  8068		       e9 01		      sbc	#1
-       93  806a		       c9 00		      cmp	#0
-       94  806c		       d0 ef		      bne	delay
-       95  806e		       60		      rts
-       96  806f
-       97  806f							; set pin to 1 or 0 with latch
-       98  806f							; A: pin mask
-       99  806f							; X: 1: set port pin to 1, 0: set port pin to 0
-      100  806f				   digitalWrite
-      101  806f		       e0 00		      cpx	#0
-      102  8071		       d0 09		      bne	digitalWriteSet
-      103  8073		       49 ff		      eor	#$ff
-      104  8075		       25 fb		      and	latch
-      105  8077		       85 fb		      sta	latch
-      106  8079		       4c 80 80 	      jmp	digitalWriteEnd
-      107  807c				   digitalWriteSet
-      108  807c		       05 fb		      ora	latch
-      109  807e		       85 fb		      sta	latch
-      110  8080				   digitalWriteEnd
-      111  8080		       8d 00 de 	      sta	LCD_PORT
-      112  8083		       60		      rts
-      113  8084
-      114  8084							; send nibble in A to display
-      115  8084				   lcdSendNibble
-      116  8084		       48		      pha
-      117  8085		       a5 fb		      lda	latch
-      118  8087		       29 f0		      and	#$f0
-      119  8089		       85 fb		      sta	latch
-      120  808b		       68		      pla
-      121  808c		       05 fb		      ora	latch
-      122  808e		       85 fb		      sta	latch
-      123  8090
-      124  8090		       a9 20		      lda	#LCD_E_PIN
-      125  8092		       a2 01		      ldx	#1
-      126  8094		       20 6f 80 	      jsr	digitalWrite
-      127  8097
-      128  8097		       a9 20		      lda	#LCD_E_PIN
-      129  8099		       a2 00		      ldx	#0
-      130  809b		       4c 6f 80 	      jmp	digitalWrite
-      131  809e
-      132  809e							; send data as instruction or data to display
-      133  809e							; A: data to send
-      134  809e							; X: state of RS pin: 0 for instruction, 1 for data
-      135  809e		       48	   lcdSend    pha
-      136  809f		       a9 10		      lda	#LCD_RS_PIN
-      137  80a1		       20 6f 80 	      jsr	digitalWrite
-      138  80a4		       68		      pla
-      139  80a5		       48		      pha
-      140  80a6		       4a		      lsr
-      141  80a7		       4a		      lsr
-      142  80a8		       4a		      lsr
-      143  80a9		       4a		      lsr
-      144  80aa		       20 84 80 	      jsr	lcdSendNibble
-      145  80ad		       68		      pla
-      146  80ae		       29 0f		      and	#$f
-      147  80b0		       4c 84 80 	      jmp	lcdSendNibble
-      148  80b3
-      149  80b3							; send instruction to display
-      150  80b3							; A: instruction to send
-      151  80b3				   lcdSendInstruction
-      152  80b3		       a2 00		      ldx	#0
-      153  80b5		       4c 9e 80 	      jmp	lcdSend
-      154  80b8
-      155  80b8							; send data to display
-      156  80b8							; A: data to send
-      157  80b8				   lcdSendData
-      158  80b8		       a2 01		      ldx	#1
-      159  80ba		       4c 9e 80 	      jmp	lcdSend
-      160  80bd
-      161  80bd							; init LCD
-      162  80bd				   lcdInit
-      163  80bd							; init 4 bit mode
-      164  80bd		       a9 10		      lda	#LCD_RS_PIN
-      165  80bf		       a2 00		      ldx	#0
-      166  80c1		       20 6f 80 	      jsr	digitalWrite
-      167  80c4		       a9 20		      lda	#LCD_E_PIN
-      168  80c6		       a2 00		      ldx	#0
-      169  80c8		       20 6f 80 	      jsr	digitalWrite
-      170  80cb
-      171  80cb		       a9 0f		      lda	#15
-      172  80cd		       20 5d 80 	      jsr	delay
-      173  80d0
-      174  80d0		       a9 03		      lda	#3
-      175  80d2		       20 84 80 	      jsr	lcdSendNibble
-      176  80d5		       a9 05		      lda	#5
-      177  80d7		       20 5d 80 	      jsr	delay
-      178  80da
-      179  80da		       a9 03		      lda	#3
-      180  80dc		       20 84 80 	      jsr	lcdSendNibble
-      181  80df		       a9 01		      lda	#1
-      182  80e1		       20 5d 80 	      jsr	delay
-      183  80e4
-      184  80e4		       a9 03		      lda	#3
-      185  80e6		       20 84 80 	      jsr	lcdSendNibble
-      186  80e9		       a9 05		      lda	#5
-      187  80eb		       20 5d 80 	      jsr	delay
-      188  80ee
-      189  80ee		       a9 02		      lda	#2
-      190  80f0		       20 84 80 	      jsr	lcdSendNibble
-      191  80f3
-      192  80f3							; 2 line mode, 5x11 characters
-      193  80f3		       a9 05		      lda	#5
-      194  80f5		       20 5d 80 	      jsr	delay
-      195  80f8		       a9 28		      lda	#$28
-      196  80fa		       20 b3 80 	      jsr	lcdSendInstruction
-      197  80fd
-      198  80fd							; display off, cursor off, blink off
-      199  80fd		       a9 05		      lda	#5
-      200  80ff		       20 5d 80 	      jsr	delay
-      201  8102		       a9 08		      lda	#8
-      202  8104		       20 b3 80 	      jsr	lcdSendInstruction
-      203  8107
-      204  8107							; clear display and return cursor home
-      205  8107		       a9 05		      lda	#5
-      206  8109		       20 5d 80 	      jsr	delay
-      207  810c		       a9 01		      lda	#1
-      208  810e		       20 b3 80 	      jsr	lcdSendInstruction
-      209  8111
-      210  8111							; entry mode: left to right
-      211  8111		       a9 05		      lda	#5
-      212  8113		       20 5d 80 	      jsr	delay
-      213  8116		       a9 06		      lda	#6
-      214  8118		       20 b3 80 	      jsr	lcdSendInstruction
-      215  811b
-      216  811b							; display on
-      217  811b		       a9 05		      lda	#5
-      218  811d		       20 5d 80 	      jsr	delay
-      219  8120		       a9 0c		      lda	#$c
-      220  8122		       4c b3 80 	      jmp	lcdSendInstruction
-      221  8125
-      222  8125							; set position in X/Y
-      223  8125				   setPosition
-      224  8125		       8a		      txa
-      225  8126		       c0 01		      cpy	#1
-      226  8128		       d0 02		      bne	setPosition2
-      227  812a		       09 40		      ora	#$40
-      228  812c				   setPosition2
-      229  812c		       09 80		      ora	#$80
-      230  812e		       4c b3 80 	      jmp	lcdSendInstruction
-      231  8131
-      232  8131							; set char in A at position X/Y
-      233  8131				   setChar
-      234  8131		       48		      pha
-      235  8132		       20 25 81 	      jsr	setPosition
-      236  8135		       68		      pla
-      237  8136		       4c b8 80 	      jmp	lcdSendData
-      238  8139
-      239  8139							; draw 16 characters starting from "text" at line in Y
-      240  8139				   drawTextLine
-      241  8139		       a9 00		      lda	#0
-      242  813b		       85 fe		      sta	tmp1
-      243  813d		       84 be		      sty	tmp2
-      244  813f				   drawTextLine2
-      245  813f		       a4 fe		      ldy	tmp1
-      246  8141		       b1 fc		      lda	(text),y
-      247  8143		       a6 fe		      ldx	tmp1
-      248  8145		       a4 be		      ldy	tmp2
-      249  8147		       20 31 81 	      jsr	setChar
-      250  814a		       e6 fe		      inc	tmp1
-      251  814c		       a5 fe		      lda	tmp1
-      252  814e		       c9 10		      cmp	#16
-      253  8150		       d0 ed		      bne	drawTextLine2
-      254  8152		       60		      rts
-      255  8153
-      256  8153		       20 20 20 20*scroll1    dc	"		    Hello		Have a nice day 		   "	;
-      257  819c		       20 20 20 20*scroll2    dc	"		     Bil		 Cheers Frank			   "	;
-      258  81e5
-      259  81e5		       40	   nmi	      rti
-      260  81e6
-      261  81e6		       40	   irq	      rti
-      262  81e7
-      263  fffa					      org	$fffa
-      264  fffa							; NMI vector
-      265  fffa		       e5 81		      dc	<(nmi), >(nmi)
-      266  fffc							; reset vector
-      267  fffc		       00 80		      dc	<(reset), >(reset)
-      268  fffe							; IRQ/BRK vector
-      269  fffe		       e6 81		      dc	<(irq), >(irq)
-      270  10000				    end
+       66  803f							; blink LED
+       67  803f		       a5 fb		      lda	latch
+       68  8041		       49 80		      eor	#$80
+       69  8043		       85 fb		      sta	latch
+       70  8045
+       71  8045							; scroll
+       72  8045		       e6 bf		      inc	textX
+       73  8047		       a5 bf		      lda	textX
+       74  8049		       c9 38		      cmp	#56
+       75  804b		       d0 cd		      bne	start2
+       76  804d
+       77  804d							; start from beginning
+       78  804d		       4c 16 80 	      jmp	start
+       79  8050
+       80  8050							; delay for the specified numbers of milliseconds in A
+       81  8050		       a2 02	   delay      ldx	#2
+       82  8052		       a0 00	   delay2     ldy	#0
+       83  8054		       88	   delay3     dey
+       84  8055		       d0 fd		      bne	delay3
+       85  8057		       ca		      dex
+       86  8058		       d0 f8		      bne	delay2
+       87  805a		       38		      sec
+       88  805b		       e9 01		      sbc	#1
+       89  805d		       c9 00		      cmp	#0
+       90  805f		       d0 ef		      bne	delay
+       91  8061		       60		      rts
+       92  8062
+       93  8062							; set pin to 1 or 0 with latch
+       94  8062							; A: pin mask
+       95  8062							; X: 1: set port pin to 1, 0: set port pin to 0
+       96  8062				   digitalWrite
+       97  8062		       e0 00		      cpx	#0
+       98  8064		       d0 09		      bne	digitalWriteSet
+       99  8066		       49 ff		      eor	#$ff
+      100  8068		       25 fb		      and	latch
+      101  806a		       85 fb		      sta	latch
+      102  806c		       4c 73 80 	      jmp	digitalWriteEnd
+      103  806f				   digitalWriteSet
+      104  806f		       05 fb		      ora	latch
+      105  8071		       85 fb		      sta	latch
+      106  8073				   digitalWriteEnd
+      107  8073		       8d 01 e0 	      sta	LCD_PORT
+      108  8076		       60		      rts
+      109  8077
+      110  8077							; send nibble in A to display
+      111  8077				   lcdSendNibble
+      112  8077		       48		      pha
+      113  8078		       a5 fb		      lda	latch
+      114  807a		       29 f0		      and	#$f0
+      115  807c		       85 fb		      sta	latch
+      116  807e		       68		      pla
+      117  807f		       05 fb		      ora	latch
+      118  8081		       85 fb		      sta	latch
+      119  8083
+      120  8083		       a9 20		      lda	#LCD_E_PIN
+      121  8085		       a2 01		      ldx	#1
+      122  8087		       20 62 80 	      jsr	digitalWrite
+      123  808a
+      124  808a		       a9 20		      lda	#LCD_E_PIN
+      125  808c		       a2 00		      ldx	#0
+      126  808e		       4c 62 80 	      jmp	digitalWrite
+      127  8091
+      128  8091							; send data as instruction or data to display
+      129  8091							; A: data to send
+      130  8091							; X: state of RS pin: 0 for instruction, 1 for data
+      131  8091		       48	   lcdSend    pha
+      132  8092		       a9 10		      lda	#LCD_RS_PIN
+      133  8094		       20 62 80 	      jsr	digitalWrite
+      134  8097		       68		      pla
+      135  8098		       48		      pha
+      136  8099		       4a		      lsr
+      137  809a		       4a		      lsr
+      138  809b		       4a		      lsr
+      139  809c		       4a		      lsr
+      140  809d		       20 77 80 	      jsr	lcdSendNibble
+      141  80a0		       68		      pla
+      142  80a1		       29 0f		      and	#$f
+      143  80a3		       4c 77 80 	      jmp	lcdSendNibble
+      144  80a6
+      145  80a6							; send instruction to display
+      146  80a6							; A: instruction to send
+      147  80a6				   lcdSendInstruction
+      148  80a6		       a2 00		      ldx	#0
+      149  80a8		       4c 91 80 	      jmp	lcdSend
+      150  80ab
+      151  80ab							; send data to display
+      152  80ab							; A: data to send
+      153  80ab				   lcdSendData
+      154  80ab		       a2 01		      ldx	#1
+      155  80ad		       4c 91 80 	      jmp	lcdSend
+      156  80b0
+      157  80b0							; init LCD
+      158  80b0				   lcdInit
+      159  80b0							; init 4 bit mode
+      160  80b0		       a9 10		      lda	#LCD_RS_PIN
+      161  80b2		       a2 00		      ldx	#0
+      162  80b4		       20 62 80 	      jsr	digitalWrite
+      163  80b7		       a9 20		      lda	#LCD_E_PIN
+      164  80b9		       a2 00		      ldx	#0
+      165  80bb		       20 62 80 	      jsr	digitalWrite
+      166  80be
+      167  80be		       a9 0f		      lda	#15
+      168  80c0		       20 50 80 	      jsr	delay
+      169  80c3
+      170  80c3		       a9 03		      lda	#3
+      171  80c5		       20 77 80 	      jsr	lcdSendNibble
+      172  80c8		       a9 05		      lda	#5
+      173  80ca		       20 50 80 	      jsr	delay
+      174  80cd
+      175  80cd		       a9 03		      lda	#3
+      176  80cf		       20 77 80 	      jsr	lcdSendNibble
+      177  80d2		       a9 01		      lda	#1
+      178  80d4		       20 50 80 	      jsr	delay
+      179  80d7
+      180  80d7		       a9 03		      lda	#3
+      181  80d9		       20 77 80 	      jsr	lcdSendNibble
+      182  80dc		       a9 05		      lda	#5
+      183  80de		       20 50 80 	      jsr	delay
+      184  80e1
+      185  80e1		       a9 02		      lda	#2
+      186  80e3		       20 77 80 	      jsr	lcdSendNibble
+      187  80e6
+      188  80e6							; 2 line mode, 5x11 characters
+      189  80e6		       a9 05		      lda	#5
+      190  80e8		       20 50 80 	      jsr	delay
+      191  80eb		       a9 28		      lda	#$28
+      192  80ed		       20 a6 80 	      jsr	lcdSendInstruction
+      193  80f0
+      194  80f0							; display off, cursor off, blink off
+      195  80f0		       a9 05		      lda	#5
+      196  80f2		       20 50 80 	      jsr	delay
+      197  80f5		       a9 08		      lda	#8
+      198  80f7		       20 a6 80 	      jsr	lcdSendInstruction
+      199  80fa
+      200  80fa							; clear display and return cursor home
+      201  80fa		       a9 05		      lda	#5
+      202  80fc		       20 50 80 	      jsr	delay
+      203  80ff		       a9 01		      lda	#1
+      204  8101		       20 a6 80 	      jsr	lcdSendInstruction
+      205  8104
+      206  8104							; entry mode: left to right
+      207  8104		       a9 05		      lda	#5
+      208  8106		       20 50 80 	      jsr	delay
+      209  8109		       a9 06		      lda	#6
+      210  810b		       20 a6 80 	      jsr	lcdSendInstruction
+      211  810e
+      212  810e							; display on
+      213  810e		       a9 05		      lda	#5
+      214  8110		       20 50 80 	      jsr	delay
+      215  8113		       a9 0c		      lda	#$c
+      216  8115		       4c a6 80 	      jmp	lcdSendInstruction
+      217  8118
+      218  8118							; set position in X/Y
+      219  8118				   setPosition
+      220  8118		       8a		      txa
+      221  8119		       c0 01		      cpy	#1
+      222  811b		       d0 02		      bne	setPosition2
+      223  811d		       09 40		      ora	#$40
+      224  811f				   setPosition2
+      225  811f		       09 80		      ora	#$80
+      226  8121		       4c a6 80 	      jmp	lcdSendInstruction
+      227  8124
+      228  8124							; set char in A at position X/Y
+      229  8124				   setChar
+      230  8124		       48		      pha
+      231  8125		       20 18 81 	      jsr	setPosition
+      232  8128		       68		      pla
+      233  8129		       4c ab 80 	      jmp	lcdSendData
+      234  812c
+      235  812c							; draw 16 characters starting from "text" at line in Y
+      236  812c				   drawTextLine
+      237  812c		       a9 00		      lda	#0
+      238  812e		       85 fe		      sta	tmp1
+      239  8130		       84 be		      sty	tmp2
+      240  8132				   drawTextLine2
+      241  8132		       a4 fe		      ldy	tmp1
+      242  8134		       b1 fc		      lda	(text),y
+      243  8136		       a6 fe		      ldx	tmp1
+      244  8138		       a4 be		      ldy	tmp2
+      245  813a		       20 24 81 	      jsr	setChar
+      246  813d		       e6 fe		      inc	tmp1
+      247  813f		       a5 fe		      lda	tmp1
+      248  8141		       c9 10		      cmp	#16
+      249  8143		       d0 ed		      bne	drawTextLine2
+      250  8145		       60		      rts
+      251  8146
+      252  8146		       20 20 20 20*scroll1    dc	"		    Hello		Have a nice day 		   "	;
+      253  818f		       20 20 20 20*scroll2    dc	"		     Bil		 Cheers Frank			   "	;
+      254  81d8
+      255  81d8		       40	   nmi	      rti
+      256  81d9
+      257  81d9		       40	   irq	      rti
+      258  81da
+      259  fffa					      org	$fffa
+      260  fffa							; NMI vector
+      261  fffa		       d8 81		      dc	<(nmi), >(nmi)
+      262  fffc							; reset vector
+      263  fffc		       00 80		      dc	<(reset), >(reset)
+      264  fffe							; IRQ/BRK vector
+      265  fffe		       d9 81		      dc	<(irq), >(irq)
+      266  10000				    end
       </pre>
 </body>
 

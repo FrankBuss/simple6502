@@ -63,6 +63,11 @@ start2	; draw first line
 		lda #100
 		jsr delay
 
+		; blink LED
+		lda latch
+		eor #$80
+		sta latch
+
 		; scroll
 		inc textX
 		lda textX
@@ -71,15 +76,6 @@ start2	; draw first line
 
 		; start from beginning
 		jmp start
-
-		; blink LED at PA0
-blink	lda #0
-		sta $e001
-		jsr delay
-		lda #1
-		sta $e001
-		jsr delay
-		jmp blink
 
 		; delay for the specified numbers of milliseconds in A
 delay	ldx #2
