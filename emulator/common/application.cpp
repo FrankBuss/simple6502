@@ -7,7 +7,7 @@
 
 extern const char* romFilename;
 
-static uint8_t busRead(uint16_t address);
+uint8_t busRead(uint16_t address);
 static void busWrite(uint16_t address, uint8_t data);
 
 uint64_t total_cycles;
@@ -20,10 +20,10 @@ static uint8_t memory[1 << 16];
 static uint8_t portA;
 static uint8_t portB;
 
-static bool running = true;
+static bool cpuRunning = true;
 static bool step = false;
 
-static uint8_t busRead(uint16_t address) {
+uint8_t busRead(uint16_t address) {
     if (address >= 0xe000 && address <= 0xe0ff) {
         // 6522 emulation
         uint8_t reg = address - 0xe00;
@@ -137,7 +137,7 @@ void tick(uint32_t deltaMilliseconds) {
         theCPU.Run(1, cyclesUsed, mos6502::INST_COUNT);
         step = false;
     } else {
-        if (running) {
+        if (cpuRunning) {
             theCPU.Run(cycles, cyclesUsed, mos6502::CYCLE_COUNT);
         }
     }
@@ -154,10 +154,10 @@ void onKeyDown(char key) {
             theCPU.Reset();
             break;
         case 'c':
-            running = true;
+            cpuRunning = true;
             break;
         case 'b':
-            running = false;
+            cpuRunning = false;
             break;
     }
 }

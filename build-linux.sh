@@ -17,6 +17,7 @@ for srcFile in ./{emulator/common,emulator/webassembly}/*.cpp; do
     srcFiles+="${srcFile} "
 done
 srcFiles+="./emulator/mos6502/mos6502.cpp "
+srcFiles+="./emulator/dcc6502/dcc6502.cpp "
 
 # compile 6502 assembler program
 cd 6502
@@ -30,6 +31,7 @@ cp ./emulator/webassembly/index.html ${DistDir}
 cp ./emulator/webassembly/Vera.ttf ${DistDir}
 cp ./emulator/webassembly/background.png ${DistDir}
 cp ./6502/rom.bin ${DistDir}
+cp ./6502/listing.txt ${DistDir}
 
 # start program
 cd "${DistDir}"

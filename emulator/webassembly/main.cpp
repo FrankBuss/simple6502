@@ -20,6 +20,9 @@
 #define DISPLAY_HEIGHT 64
 #define DISPLAY_SCALE 4
 
+extern void disassembleCode(char *output, uint8_t *buffer, uint16_t *pc);
+extern uint8_t busRead(uint16_t address);
+
 const char* romFilename;
 
 const char* background = "background.png";
@@ -29,6 +32,9 @@ SDL_Window *window = NULL;
 SDL_Renderer *renderer = NULL;
 SDL_Texture *bitmapTex = NULL;
 SDL_Surface *bitmapSurface = NULL;
+
+uint8_t memory[65536];
+char buf[1024];
 
 TTF_Font *vera;
 
@@ -338,7 +344,6 @@ void render() {
     draw_display();
 
     // show CPU information
-    char buf[100];
     x = 32;
     y = 300;
     int ofs = 20;
@@ -347,8 +352,50 @@ void render() {
     draw_text(x, y, buf);
     y += ofs;
 
+
     sprintf(buf, "PC: %04x", theCPU.pc);
     draw_text(x, y, buf);
+
+    // show current instruction
+    uint16_t pc = theCPU.pc;
+    memory[pc] = busRead(pc);
+    memory[pc + 1] = busRead(pc + 1);
+    memory[pc + 2] = busRead(pc + 2);
+    disassembleCode(buf, memory, &pc);
+
+    char* addrEnd = buf;
+    while (*addrEnd) {
+        if (*addrEnd == '>') {
+            *addrEnd = 0;
+            addrEnd++;
+            break;
+        }
+        addrEnd++;
+    }
+
+    char* colon = addrEnd;
+    char* inst = NULL;
+    while (*colon) {
+        if (*colon == ':') {
+            *colon = 0;
+            inst = colon + 1;
+            break;
+        }
+        colon++;
+    }
+    draw_text(130, y, addrEnd);
+    if (inst) {
+        while (*inst == ' ') inst++;
+        char* semicolon = inst;
+        while (*semicolon) {
+            if (*semicolon == ';') {
+                *semicolon = 0;
+                break;
+            }
+            semicolon++;
+        }
+        draw_text(220, y, inst);
+    }
     y += ofs;
 
     sprintf(buf, "A: %02x", theCPU.A);
